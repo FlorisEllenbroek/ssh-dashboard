@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Terminal Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="admin-page">
+  <header>
+    <h1>Admin Panel</h1>
+    <nav class="header-nav">
+      <a href="/terminal" class="nav-btn">Dashboard</a>
+      <a href="/logout" class="logout-btn">Logout</a>
+    </nav>
+  </header>
+
+  <div class="admin-container">
+    <!-- User Management -->
+    <section class="admin-section">
+      <div class="section-header">
+        <h2>Users</h2>
+        <button id="btn-add-user" class="btn btn-primary">+ Add User</button>
+      </div>
+      <table class="admin-table" id="users-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Role</th>
+            <th>Sudo</th>
+            <th>Active</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- User Form Modal -->
+    <div id="user-modal" class="modal" style="display:none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="modal-title">Add User</h3>
+          <button class="modal-close" id="modal-close">&times;</button>
+        </div>
+        <form id="user-form">
+          <input type="hidden" id="form-id">
+          <div class="form-group">
+            <label for="form-username">Username</label>
+            <input type="text" id="form-username" required>
+          </div>
+          <div class="form-group">
+            <label for="form-password">Password</label>
+            <input type="password" id="form-password">
+            <small id="password-hint" style="display:none;color:#8b949e;">Leave blank to keep current password</small>
+          </div>
+          <div class="form-group">
+            <label for="form-role">Role</label>
+            <select id="form-role">
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="form-sudo"> Allow sudo
+            </label>
+          </div>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Audit Logs -->
+    <section class="admin-section">
+      <div class="section-header">
+        <h2>Audit Logs</h2>
+        <div class="audit-filters">
+          <input type="text" id="filter-username" placeholder="Filter username..." class="filter-input">
+          <select id="filter-event" class="filter-input">
+            <option value="">All events</option>
+            <option value="login">Login</option>
+            <option value="logout">Logout</option>
+            <option value="login_failed">Login Failed</option>
+            <option value="terminal_open">Terminal Open</option>
+            <option value="terminal_close">Terminal Close</option>
+            <option value="command">Command</option>
+            <option value="user_created">User Created</option>
+            <option value="user_updated">User Updated</option>
+            <option value="user_deleted">User Deleted</option>
+          </select>
+          <button id="btn-filter" class="btn btn-small">Filter</button>
+        </div>
+      </div>
+      <table class="admin-table" id="audit-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>User</th>
+            <th>Event</th>
+            <th>Detail</th>
+            <th>IP</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div class="pagination" id="audit-pagination"></div>
+    </section>
+  </div>
+
+  <script src="/js/admin.js"></script>
+</body>
+</html>

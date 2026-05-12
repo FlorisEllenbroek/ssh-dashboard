@@ -10,7 +10,10 @@
 <body class="dashboard-page">
   <header>
     <h1>Terminal Dashboard</h1>
-    <a href="/logout" class="logout-btn">Logout</a>
+    <nav class="header-nav">
+      <a href="/admin" id="admin-link" class="nav-btn" style="display:none;">Admin</a>
+      <a href="/logout" class="logout-btn">Logout</a>
+    </nav>
   </header>
   <div class="dashboard-grid">
     <div class="panel terminal-panel">
@@ -54,5 +57,12 @@
   <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
   <script src="/js/terminal.js"></script>
   <script src="/js/dashboard.js"></script>
+  <script>
+    fetch('/api/me').then(function(r) { return r.json(); }).then(function(user) {
+      if (user.role === 'admin') {
+        document.getElementById('admin-link').style.display = '';
+      }
+    }).catch(function() {});
+  </script>
 </body>
 </html>

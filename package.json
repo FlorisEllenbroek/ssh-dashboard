@@ -13,6 +13,7 @@
     "express": "^4.21.0",
     "express-session": "^1.18.0",
     "node-pty": "^1.0.0",
+    "sql.js": "^1.14.1",
     "systeminformation": "^5.22.0",
     "ws": "^8.17.0"
   }

@@ -5,7 +5,10 @@ const express = require('express');
 const { WebSocketServer } = require('ws');
 const pty = require('node-pty');
 const si = require('systeminformation');
-const { router: authRouter, setupSession, requireAuth, getSessionStore } = require('./auth');
+const { initDatabase, addAuditLog } = require('./db');
+const { router: authRouter, setupSession, requireAuth, requireAdmin, getSessionStore } = require('./auth');
+const usersRouter = require('./routes/users');
+const auditRouter = require('./routes/audit');
 
 const app = express();
 const server = http.createServer(app);
@@ -16,12 +19,21 @@ setupSession(app);
 // Auth routes
 app.use(authRouter);
 
+// API routes
+app.use('/api/users', usersRouter);
+app.use('/api/audit-logs', auditRouter);
+
 // Static files
 app.use(express.static('public'));
 
 // Protect dashboard
 app.get('/terminal', requireAuth, (req, res) => {
   res.sendFile(__dirname + '/public/terminal.html');
+});
+
+// Protect admin page
+app.get('/admin', requireAuth, requireAdmin, (req, res) => {
+  res.sendFile(__dirname + '/public/admin.html');
 });
 
 // System info API
@@ -92,13 +104,24 @@ server.on('upgrade', (req, socket, head) => {
       socket.destroy();
       return;
     }
+    // Attach session data to request for use in connection handler
+    req.sessionData = {
+      username: sess.username,
+      role: sess.role,
+      sudoAllowed: sess.sudoAllowed,
+    };
     wss.handleUpgrade(req, socket, head, (ws) => {
       wss.emit('connection', ws, req);
     });
   });
 });
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
+  const { username, role, sudoAllowed } = req.sessionData;
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress;
+
+  addAuditLog(username, 'terminal_open', null, ip);
+
   const shell = process.platform === 'win32' ? 'powershell.exe' : 'bash';
   const ptyProcess = pty.spawn(shell, [], {
     name: 'xterm-256color',
@@ -107,6 +130,9 @@ wss.on('connection', (ws) => {
     cwd: process.env.HOME || process.env.USERPROFILE,
     env: process.env,
   });
+
+  // Command buffer for logging
+  let commandBuffer = '';
 
   ptyProcess.onData((data) => {
     try {
@@ -130,10 +156,34 @@ wss.on('connection', (ws) => {
       return;
     }
 
+    // Buffer keystrokes for command logging
+    for (const ch of data) {
+      if (ch === '\r' || ch === '\n') {
+        const cmd = commandBuffer.trim();
+        if (cmd) {
+          // Sudo restriction check
+          if (!sudoAllowed && /^sudo\s/.test(cmd)) {
+            addAuditLog(username, 'command', { command: cmd, blocked: true, reason: 'sudo not allowed' }, ip);
+            ws.send('\r\n\x1b[31m[Access Denied] You do not have sudo privileges.\x1b[0m\r\n');
+            ptyProcess.write('\x03');
+            commandBuffer = '';
+            return;
+          }
+          addAuditLog(username, 'command', { command: cmd }, ip);
+        }
+        commandBuffer = '';
+      } else if (ch === '\x7f' || ch === '\b') {
+        commandBuffer = commandBuffer.slice(0, -1);
+      } else if (ch.charCodeAt(0) >= 32) {
+        commandBuffer += ch;
+      }
+    }
+
     ptyProcess.write(data);
   });
 
   ws.on('close', () => {
+    addAuditLog(username, 'terminal_close', null, ip);
     ptyProcess.kill();
   });
 
@@ -146,7 +196,14 @@ wss.on('connection', (ws) => {
   });
 });
 
+// Initialize database then start server
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Dashboard running on http://localhost:${PORT}`);
+
+initDatabase().then(() => {
+  server.listen(PORT, () => {
+    console.log(`Dashboard running on http://localhost:${PORT}`);
+  });
+}).catch(err => {
+  console.error('Failed to initialize database:', err);
+  process.exit(1);
 });

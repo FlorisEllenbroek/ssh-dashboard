@@ -1,6 +1,7 @@
 const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
+const { getUser, addAuditLog } = require('./db');
 
 const router = express.Router();
 
@@ -31,65 +32,76 @@ function requireAuth(req, res, next) {
   if (req.session && req.session.authenticated) {
     return next();
   }
+  if (req.path.startsWith('/api/')) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
   res.redirect('/');
 }
 
-// Parse session from cookie for WebSocket upgrade requests
-function getSessionFromRequest(req, sessionStore, sessionSecret) {
-  return new Promise((resolve) => {
-    const cookieHeader = req.headers.cookie;
-    if (!cookieHeader) return resolve(null);
-
-    const sid = parseCookie(cookieHeader, 'connect.sid', sessionSecret);
-    if (!sid) return resolve(null);
-
-    if (sessionStore) {
-      sessionStore.get(sid, (err, sess) => {
-        if (err || !sess) return resolve(null);
-        resolve(sess);
-      });
-    } else {
-      resolve(null);
-    }
-  });
+function requireAdmin(req, res, next) {
+  if (req.session && req.session.role === 'admin') {
+    return next();
+  }
+  if (req.path.startsWith('/api/')) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  res.redirect('/');
 }
 
-function parseCookie(cookieHeader, name, secret) {
-  const cookies = cookieHeader.split(';').reduce((acc, c) => {
-    const [k, ...v] = c.trim().split('=');
-    acc[k] = decodeURIComponent(v.join('='));
-    return acc;
-  }, {});
-
-  const raw = cookies[name];
-  if (!raw) return null;
-
-  // express-session signs cookies as s:<sid>.<signature>
-  if (raw.startsWith('s:')) {
-    return raw.slice(2).split('.')[0];
-  }
-  return raw;
+function getClientIp(req) {
+  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress;
 }
 
 router.post('/login', express.urlencoded({ extended: false }), async (req, res) => {
   const { username, password } = req.body;
+  const ip = getClientIp(req);
 
-  const validUser = username === process.env.USERNAME;
-  const validPass = password === process.env.PASSWORD;
-
-  if (validUser && validPass) {
-    req.session.authenticated = true;
-    req.session.username = username;
-    return res.redirect('/terminal');
+  if (!username || !password) {
+    return res.redirect('/?error=1');
   }
 
-  res.redirect('/?error=1');
+  const user = getUser(username);
+
+  if (!user) {
+    addAuditLog(username, 'login_failed', { reason: 'unknown user' }, ip);
+    return res.redirect('/?error=1');
+  }
+
+  const validPass = await bcrypt.compare(password, user.password_hash);
+
+  if (!validPass) {
+    addAuditLog(username, 'login_failed', { reason: 'wrong password' }, ip);
+    return res.redirect('/?error=1');
+  }
+
+  req.session.authenticated = true;
+  req.session.username = user.username;
+  req.session.role = user.role;
+  req.session.sudoAllowed = user.sudo_allowed === 1;
+  req.session.userId = user.id;
+
+  addAuditLog(username, 'login', null, ip);
+
+  return res.redirect('/terminal');
 });
 
 router.get('/logout', (req, res) => {
+  const username = req.session?.username || 'unknown';
+  const ip = getClientIp(req);
+
+  addAuditLog(username, 'logout', null, ip);
+
   req.session.destroy(() => {
     res.redirect('/');
   });
 });
 
-module.exports = { router, setupSession, requireAuth, getSessionFromRequest, getSessionStore };
+router.get('/api/me', requireAuth, (req, res) => {
+  res.json({
+    username: req.session.username,
+    role: req.session.role,
+    sudoAllowed: req.session.sudoAllowed,
+  });
+});
+
+module.exports = { router, setupSession, requireAuth, requireAdmin, getSessionStore, getClientIp };
