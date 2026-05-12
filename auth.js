@@ -32,7 +32,7 @@ function requireAuth(req, res, next) {
   if (req.session && req.session.authenticated) {
     return next();
   }
-  if (req.path.startsWith('/api/')) {
+  if (req.originalUrl.startsWith('/api/')) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
   res.redirect('/');
@@ -42,7 +42,7 @@ function requireAdmin(req, res, next) {
   if (req.session && req.session.role === 'admin') {
     return next();
   }
-  if (req.path.startsWith('/api/')) {
+  if (req.originalUrl.startsWith('/api/')) {
     return res.status(403).json({ error: 'Admin access required' });
   }
   res.redirect('/');
