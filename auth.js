@@ -75,7 +75,7 @@ router.post('/login', express.urlencoded({ extended: false }), async (req, res) 
   const { username, password } = req.body;
 
   const validUser = username === process.env.USERNAME;
-  const validPass = await bcrypt.compare(password || '', process.env.PASSWORD_HASH || '');
+  const validPass = password === process.env.PASSWORD;
 
   if (validUser && validPass) {
     req.session.authenticated = true;
