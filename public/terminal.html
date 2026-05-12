@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terminal Dashboard</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="dashboard-page">
+  <header>
+    <h1>Terminal Dashboard</h1>
+    <a href="/logout" class="logout-btn">Logout</a>
+  </header>
+  <div class="dashboard-grid">
+    <div class="panel terminal-panel">
+      <div class="panel-header">Terminal</div>
+      <div id="terminal"></div>
+    </div>
+    <div class="panel info-panel">
+      <div class="panel-header">System Info</div>
+      <div id="sysinfo">
+        <div class="info-item">
+          <span class="info-label">Host</span>
+          <span id="hostname" class="info-value">-</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">OS</span>
+          <span id="os" class="info-value">-</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Uptime</span>
+          <span id="uptime" class="info-value">-</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">CPU</span>
+          <span id="cpu-model" class="info-value">-</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">CPU Load</span>
+          <div class="progress-bar"><div id="cpu-bar" class="progress-fill"></div></div>
+          <span id="cpu-load" class="info-percent">0%</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Memory</span>
+          <div class="progress-bar"><div id="mem-bar" class="progress-fill"></div></div>
+          <span id="mem-usage" class="info-percent">0%</span>
+        </div>
+        <div id="disk-container"></div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
+  <script src="/js/terminal.js"></script>
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>
